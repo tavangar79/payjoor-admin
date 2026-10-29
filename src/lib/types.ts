@@ -96,19 +96,14 @@ export type JobRun = {
   type: JobType;
   startedAt: string;
   finishedAt?: string;
-  apifyRunId?: string;
-  costUsd?: number;
   counts?: Record<string, number>;
   error?: string;
 };
 
-export type Usage = {
-  monthlyUsageUsd: number | null;
-  maxMonthlyUsageUsd: number | null;
-  budgetStopUsd: number;
-  recordedThisMonthUsd: number;
-  apifyReachable: boolean;
-};
+/** BoxAPI Data API request quota (GET /jobs/quota). */
+export type Quota =
+  | { reachable: false }
+  | { reachable: true; requestUsed: number; requestLimit: number; requestLeft: number; planExpiration: string | null };
 
 /** Result of the profile fetch job (PRD §5.6). */
 export type ProfileDraft = {

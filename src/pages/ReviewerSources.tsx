@@ -233,7 +233,7 @@ function SourceDialog({
           <DialogHeader className="text-start">
             <DialogTitle className="text-ink">{isNew ? 'افزودن پیج نقد' : 'ویرایش پیج نقد'}</DialogTitle>
             <DialogDescription className="leading-6 text-ink-3">
-              هزینهٔ اصلی Apify دریافت پست‌های قبلی است؛ سقف را معقول نگه دارید (پیش‌فرض ۵۰).
+              دریافت پست‌های قبلی هر ۱۲ پست یک درخواست BoxAPI مصرف می‌کند؛ سقف را معقول نگه دارید (پیش‌فرض ۵۰).
             </DialogDescription>
           </DialogHeader>
           {isNew ? (

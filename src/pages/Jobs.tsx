@@ -1,4 +1,4 @@
-// Recent jobRuns, Apify usage this month, run daily check now (PRD §6.2, §9.2.6).
+// Recent jobRuns, BoxAPI Data API request quota, run daily check now (PRD §6.2, §9.2.6).
 import { useState } from 'react';
 import { ExternalLink, Loader2, Play, RotateCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, EmptyState, ErrorState, LoadingRows, PageHeader, Panel } from '@/components/common';
 import { useToast } from '@/components/toast';
 import { get, post, qs } from '@/lib/api';
-import { COUNT_LABELS, JOB_TYPE_LABELS, errorMessage, fmtAgo, fmtDateTime, money, num } from '@/lib/labels';
-import { JOB_TYPES, type JobRun, type JobType, type Usage } from '@/lib/types';
+import { COUNT_LABELS, JOB_TYPE_LABELS, errorMessage, fmtAgo, fmtDateTime, num } from '@/lib/labels';
+import { JOB_TYPES, type JobRun, type JobType, type Quota } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +31,7 @@ export function Jobs() {
   const toast = useToast();
   const [type, setType] = useState<JobType | undefined>();
   const runs = useAsync(() => get<{ items: JobRun[] }>(`/jobs/runs${qs({ type, limit: 50 })}`), [type]);
-  const usage = useAsync(() => get<Usage>('/jobs/usage'), []);
+  const quota = useAsync(() => get<Quota>('/jobs/quota'), []);
   const [starting, setStarting] = useState(false);
 
   async function runDaily() {
@@ -50,8 +50,8 @@ export function Jobs() {
   return (
     <>
       <PageHeader
-        title="کارها و هزینه"
-        description="سابقهٔ کارهای پس‌زمینه و مصرف Apify در این ماه."
+        title="کارها"
+        description="سابقهٔ کارهای پس‌زمینه و سهمیهٔ درخواست‌های BoxAPI."
         actions={
           <>
             <Button variant="outline" asChild>
@@ -68,7 +68,7 @@ export function Jobs() {
         }
       />
 
-      <UsageCard usage={usage.data} loading={usage.loading} error={usage.error} onRetry={usage.reload} />
+      <QuotaCard quota={quota.data} loading={quota.loading} error={quota.error} onRetry={quota.reload} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-ink">اجراهای اخیر</h2>
@@ -107,7 +107,6 @@ export function Jobs() {
                 <TableHead>وضعیت</TableHead>
                 <TableHead>شروع</TableHead>
                 <TableHead>مدت</TableHead>
-                <TableHead>هزینه</TableHead>
                 <TableHead>نتیجه</TableHead>
               </TableRow>
             </TableHeader>
@@ -116,17 +115,6 @@ export function Jobs() {
                 <TableRow key={run._id} className="align-top hover:bg-subtle">
                   <TableCell className="font-medium text-ink">
                     {JOB_TYPE_LABELS[run.type]}
-                    {run.apifyRunId && (
-                      <a
-                        href={`https://console.apify.com/actors/runs/${encodeURIComponent(run.apifyRunId)}`}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="mt-0.5 flex items-center gap-1 text-xs font-normal text-brand hover:underline"
-                      >
-                        اجرا در Apify
-                        <ExternalLink className="size-3" aria-hidden="true" />
-                      </a>
-                    )}
                   </TableCell>
                   <TableCell>
                     <RunStatus run={run} />
@@ -137,7 +125,6 @@ export function Jobs() {
                     </time>
                   </TableCell>
                   <TableCell>{duration(run) ?? '—'}</TableCell>
-                  <TableCell className="tabular-nums">{money(run.costUsd)}</TableCell>
                   <TableCell className="max-w-sm whitespace-normal">
                     {run.error ? (
                       <p dir="ltr" className="text-start font-mono text-xs break-words text-danger">
@@ -163,62 +150,69 @@ export function Jobs() {
   );
 }
 
-function UsageCard({ usage, loading, error, onRetry }: { usage?: Usage; loading: boolean; error: unknown; onRetry: () => void }) {
-  if (loading && !usage) {
+function QuotaCard({ quota, loading, error, onRetry }: { quota?: Quota; loading: boolean; error: unknown; onRetry: () => void }) {
+  if (loading && !quota) {
     return (
       <Panel>
-        <LoadingRows rows={2} label="در حال خواندن مصرف" />
+        <LoadingRows rows={2} label="در حال خواندن سهمیه" />
       </Panel>
     );
   }
-  if (error || !usage) {
+  if (error || !quota) {
     return (
       <Panel>
         <ErrorState error={error} onRetry={onRetry} />
       </Panel>
     );
   }
+  if (!quota.reachable) {
+    return (
+      <Panel className="p-5">
+        <Alert tone="note">به BoxAPI وصل نشدیم؛ سهمیهٔ درخواست‌ها را نمی‌دانیم. توکن BOXAPI_INSTAGRAM_TOKEN را بررسی کنید.</Alert>
+      </Panel>
+    );
+  }
 
-  const used = usage.monthlyUsageUsd ?? usage.recordedThisMonthUsd;
-  const max = usage.maxMonthlyUsageUsd ?? 5;
-  const pct = Math.min(100, (used / max) * 100);
-  const stopPct = Math.min(100, (usage.budgetStopUsd / max) * 100);
-  const overStop = used >= usage.budgetStopUsd;
-  const barTone = used >= max ? 'bg-danger-solid' : overStop ? 'bg-warn-solid' : 'bg-brand-solid';
+  const { requestUsed: used, requestLimit: max, requestLeft: left } = quota;
+  const pct = max > 0 ? Math.min(100, (used / max) * 100) : 100;
+  const low = left <= Math.max(1, max * 0.2);
+  const barTone = left <= 0 ? 'bg-danger-solid' : low ? 'bg-warn-solid' : 'bg-brand-solid';
 
   return (
     <Panel className="flex flex-col gap-4 p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-ink-3">مصرف Apify در این ماه</span>
+          <span className="text-sm text-ink-3">درخواست‌های BoxAPI (اینستاگرام)</span>
           <span className="text-3xl font-bold text-ink tabular-nums">
-            {money(used)} <span className="text-base font-medium text-ink-3">از {money(max)}</span>
+            {num(used)} <span className="text-base font-medium text-ink-3">از {num(max)}</span>
           </span>
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-          <dt className="text-ink-3">ثبت‌شده در کارها</dt>
-          <dd className="font-medium text-ink tabular-nums">{money(usage.recordedThisMonthUsd)}</dd>
-          <dt className="text-ink-3">توقف پست‌های قبلی در</dt>
-          <dd className="font-medium text-ink tabular-nums">{money(usage.budgetStopUsd)}</dd>
+          <dt className="text-ink-3">باقی‌مانده</dt>
+          <dd className="font-medium text-ink tabular-nums">{num(left)}</dd>
+          {quota.planExpiration && (
+            <>
+              <dt className="text-ink-3">پایان اشتراک</dt>
+              <dd className="font-medium text-ink">
+                <time dateTime={quota.planExpiration}>{fmtDateTime(quota.planExpiration)}</time>
+              </dd>
+            </>
+          )}
         </dl>
       </div>
       <div
         className="relative h-2.5 rounded-full bg-subtle"
         role="meter"
-        aria-label="مصرف ماهانهٔ Apify"
+        aria-label="درخواست‌های مصرف‌شدهٔ BoxAPI"
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={used}
-        aria-valuetext={`${money(used)} از ${money(max)}`}
+        aria-valuetext={`${num(used)} از ${num(max)}`}
       >
         <div className={cn('h-full rounded-full transition-[width]', barTone)} style={{ width: `${pct}%` }} />
-        <div className="absolute -top-1 h-4.5 w-0.5 rounded bg-ink-3" style={{ insetInlineStart: `${stopPct}%` }} title="حد توقف" />
       </div>
-      {!usage.apifyReachable && (
-        <Alert tone="note">به Apify وصل نشدیم؛ عدد بالا فقط از سابقهٔ کارهای خودمان است.</Alert>
-      )}
-      {overStop && (
-        <Alert tone="note">مصرف از حد توقف گذشته است: دریافت پست‌های قبلی متوقف است و فقط بررسی روزانه ادامه دارد.</Alert>
+      {left <= 0 && (
+        <Alert tone="note">درخواست‌های این دوره تمام شده است: بررسی روزانه، پست‌های قبلی و خواندن پروفایل تا تمدید اشتراک کار نمی‌کنند.</Alert>
       )}
     </Panel>
   );

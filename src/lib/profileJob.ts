@@ -1,4 +1,4 @@
-// Waits for a profile-fetch job (PRD §5.6): the worker runs Apify, the admin app polls its state.
+// Waits for a profile-fetch job (PRD §5.6): the worker calls the BoxAPI Data API, the admin app polls its state.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, get } from './api';
 import type { ProfileDraft, ProfileJob } from './types';
@@ -9,7 +9,6 @@ const TIMEOUT_MS = 4 * 60 * 1000;
 const JOB_ERRORS: Record<string, string> = {
   profile_not_found: 'پیجی با این شناسه در اینستاگرام پیدا نشد (یا خصوصی است).',
   invalid_handle: 'شناسهٔ اینستاگرام معتبر نیست.',
-  apify_budget: 'بودجهٔ ماهانهٔ Apify تمام شده است؛ تصویر را دستی بارگذاری کنید.',
 };
 
 export function profileJobError(reason: string) {

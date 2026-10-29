@@ -5,8 +5,12 @@
   "3": "package.json",
   "4": "devDependencies",
   "5": "dependencies",
+  "6": "ShopEdit.tsx",
   "7": "admin/",
   "8": "api.ts",
   "9": "utils.ts",
-  "10": "vite.config.ts"
+  "10": "vite.config.ts",
+  "11": "Jobs.tsx",
+  "12": "labels.ts",
+  "13": "badge.tsx"
 }

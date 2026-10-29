@@ -26,7 +26,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/shops', label: 'فروشگاه‌ها', icon: Store },
   { to: '/categories', label: 'دسته‌بندی‌ها', icon: Layers },
   { to: '/reviewer-sources', label: 'پیج‌های نقد', icon: Rss },
-  { to: '/jobs', label: 'کارها و هزینه', icon: Gauge },
+  { to: '/jobs', label: 'کارها', icon: Gauge },
 ];
 
 function Brand() {

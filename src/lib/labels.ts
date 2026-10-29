@@ -65,6 +65,9 @@ export const COUNT_LABELS: Record<string, string> = {
   items: 'آیتم',
   imageStored: 'تصویر',
   sources: 'پیج',
+  sourceErrors: 'پیج ناموفق',
+  postsNew: 'پست جدید',
+  found: 'پیدا شد',
 };
 
 const ERROR_LABELS: Record<string, string> = {
@@ -98,8 +101,6 @@ export function errorMessage(err: unknown): string {
 const faNumber = new Intl.NumberFormat('fa-IR');
 export const num = (n: number | null | undefined) => (n === null || n === undefined ? '—' : faNumber.format(n));
 
-const usd = new Intl.NumberFormat('fa-IR', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 });
-export const money = (n: number | null | undefined) => (n === null || n === undefined ? '—' : usd.format(n));
 
 const dateTime = new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Tehran' });
 const dateOnly = new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium', timeZone: 'Asia/Tehran' });
