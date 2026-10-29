@@ -1,6 +1,6 @@
 # admin/
 
-Admin panel, served by the backend at `/admin`; JSON API at `/admin/api/*`. See the root `CLAUDE.md` and PRD §9.
+Admin panel at `/admin`, served by its own nginx image (`Dockerfile`, `nginx.conf.template`), which proxies the JSON API (`/admin/api/*`) and Bull Board (`/admin/queues`) to the backend at `BACKEND_URL`. See the root `CLAUDE.md` and PRD §9.
 
 **Before designing or building any screen or component, use the `admin-ui` skill** (it runs ui-ux-pro-max).
 

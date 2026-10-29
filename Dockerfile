@@ -1,7 +1,6 @@
-# Admin panel build (PRD §9, §11). Build context is the repo root, so the root package-lock.json and the
-# npm workspaces resolve: `docker build -f admin/Dockerfile .` (docker-compose.yml does this).
-# The result is an artifact image holding only the built files at /dist; the backend image copies them
-# and serves them at /admin, so this image is never run.
+# Admin panel image (PRD §9, §11): nginx serves the built app at /admin and proxies /admin/api and
+# /admin/queues to the backend at BACKEND_URL. Build context is the repo root, so the root
+# package-lock.json and the npm workspaces resolve: `docker build -f admin/Dockerfile .`
 
 FROM node:22-alpine AS build
 WORKDIR /app
@@ -14,5 +13,9 @@ RUN npm ci -w admin --include-workspace-root=false
 COPY admin/ admin/
 RUN npm run build -w admin
 
-FROM scratch
-COPY --from=build /app/admin/dist /dist
+FROM nginx:1.27-alpine
+ENV BACKEND_URL=http://backend:3000
+COPY admin/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/admin/dist /usr/share/nginx/html/admin
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1

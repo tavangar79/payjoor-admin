@@ -1,0 +1,59 @@
+# Admin panel server (PRD §9, §11): serves the built app at /admin and proxies its JSON API and Bull Board
+# to the backend, so the browser sees one origin (the session cookie is sameSite=strict on /admin).
+# ${BACKEND_URL} is filled in by the nginx image at startup (envsubst on /etc/nginx/templates).
+
+server {
+  listen 8080;
+  server_tokens off;
+  # Relative Location headers, so redirects keep the public host and port.
+  absolute_redirect off;
+  root /usr/share/nginx/html;
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header X-Frame-Options DENY always;
+  add_header Referrer-Policy strict-origin-when-cross-origin always;
+  add_header X-Robots-Tag noindex always;
+  # Images may come from the Instagram CDN (review thumbnails).
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+
+  location = /healthz {
+    access_log off;
+    default_type application/json;
+    return 200 '{"ok":true}';
+  }
+
+  location = / {
+    return 302 /admin/;
+  }
+
+  # The backend sets its own security headers; adding one here stops the server-level ones being repeated.
+  location /admin/api/ {
+    add_header X-Robots-Tag noindex always;
+    proxy_pass ${BACKEND_URL};
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 1m;
+  }
+
+  # Same for Bull Board, whose UI also needs inline scripts and so can't have our CSP.
+  location /admin/queues {
+    add_header X-Robots-Tag noindex always;
+    proxy_pass ${BACKEND_URL};
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # Hashed build assets can be cached forever.
+  location /admin/assets/ {
+    expires max;
+    try_files $uri =404;
+  }
+
+  # Every client route gets index.html.
+  location /admin/ {
+    expires -1;
+    try_files $uri /admin/index.html;
+  }
+}
