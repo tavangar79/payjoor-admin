@@ -1,6 +1,6 @@
 // Add/edit sources, follow toggle, backfill limit, run backfill now (PRD §6.1, §9.2.5).
 import { useState, type FormEvent } from 'react';
-import { History, Loader2, Pencil, Plus } from 'lucide-react';
+import { History, Loader2, Pencil, Plus, Search, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { EmptyState, ErrorState, Field, Handle, LoadingRows, PageHeader, Panel } from '@/components/common';
+import { Alert, EmptyState, ErrorState, Field, Handle, LoadingRows, PageHeader, Panel } from '@/components/common';
 import { normalizeHandle } from '@/components/TagInput';
 import { useToast } from '@/components/toast';
+import { useProfileJob } from '@/lib/profileJob';
 import { get, patch, post } from '@/lib/api';
 import { PERMISSION_LABELS, errorMessage, fmtAgo, fmtDateTime, num } from '@/lib/labels';
-import { REVIEWER_PERMISSIONS, type ReviewerPermission, type ReviewerSource } from '@/lib/types';
+import { REVIEWER_PERMISSIONS, type ProfileDraft, type ReviewerPermission, type ReviewerSource } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 
 export function ReviewerSources() {
@@ -88,9 +89,32 @@ export function ReviewerSources() {
               {list.data.items.map((s) => (
                 <TableRow key={s._id} className="hover:bg-subtle">
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-ink">{s.name}</span>
-                      <Handle handle={s.handle} className="text-xs" />
+                    <div className="flex items-center gap-3">
+                      {s.profile?.sha256 ? (
+                        <img
+                          src={`/media/shop/${s.profile.sha256}`}
+                          alt=""
+                          loading="lazy"
+                          className="size-10 shrink-0 rounded-full border border-line object-cover"
+                        />
+                      ) : (
+                        <span aria-hidden="true" className="size-10 shrink-0 rounded-full border border-line bg-subtle" />
+                      )}
+                      <div className="flex flex-col">
+                        <span className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+                          {s.name}
+                          {s.trusted && (
+                            <Badge variant="success">
+                              <ShieldCheck aria-hidden="true" />
+                              مورد اعتماد
+                            </Badge>
+                          )}
+                        </span>
+                        <Handle handle={s.handle} className="text-xs" />
+                        {s.profile?.postCount != null && (
+                          <span className="text-xs text-ink-3">{num(s.profile.postCount)} پست</span>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -184,7 +208,11 @@ function SourceDialog({
   const [follow, setFollow] = useState(true);
   const [limit, setLimit] = useState('50');
   const [permission, setPermission] = useState<ReviewerPermission>('link_only');
+  const [trusted, setTrusted] = useState(false);
   const [pending, setPending] = useState(false);
+  const [draft, setDraft] = useState<ProfileDraft | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const profileJob = useProfileJob();
 
   if (key && openFor !== key) {
     setOpenFor(key);
@@ -194,7 +222,34 @@ function SourceDialog({
     setFollow(s?.follow ?? true);
     setLimit(String(s?.backfillLimit ?? 50));
     setPermission(s?.permission ?? 'link_only');
+    setTrusted(s?.trusted ?? false);
+    setDraft(null);
+    setDraftError(null);
   }
+
+  // One Instagram request per press; never on typing.
+  async function checkPage() {
+    const h = normalizeHandle(handle);
+    if (!h) {
+      setDraftError('شناسه را وارد کنید.');
+      return;
+    }
+    setDraft(null);
+    setDraftError(null);
+    profileJob.setRunning(true);
+    try {
+      const { jobId } = await post<{ jobId: string }>('/shops/profile-preview', { handle: h });
+      const result = await profileJob.wait(jobId);
+      setDraft(result);
+      if (!name.trim() && result.displayName) setName(result.displayName);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'cancelled') return;
+      profileJob.setRunning(false);
+      setDraftError(errorMessage(err));
+    }
+  }
+
+  const problem = draft ? (draft.isPrivate ? 'پیج خصوصی است.' : !draft.postCount ? 'پیج هنوز پستی ندارد.' : null) : null;
 
   const limitNumber = Number(limit);
   const limitValid = Number.isInteger(limitNumber) && limitNumber >= 0 && limitNumber <= 500;
@@ -204,9 +259,21 @@ function SourceDialog({
     if (!name.trim() || !limitValid || (isNew && !normalizeHandle(handle))) return;
     setPending(true);
     try {
-      const body = { name: name.trim(), follow, backfillLimit: limitNumber, permission };
+      const body = { name: name.trim(), follow, backfillLimit: limitNumber, permission, trusted };
+      const profile =
+        draft?.image && draft.postCount != null && draft.followerCount != null
+          ? {
+              sha256: draft.image.sha256,
+              displayName: draft.displayName,
+              biography: draft.biography,
+              postCount: draft.postCount,
+              followerCount: draft.followerCount,
+              isPrivate: draft.isPrivate,
+              fetchedAt: draft.fetchedAt,
+            }
+          : undefined;
       const saved = isNew
-        ? await post<ReviewerSource>('/reviewer-sources', { ...body, handle: normalizeHandle(handle) })
+        ? await post<ReviewerSource>('/reviewer-sources', { ...body, handle: normalizeHandle(handle), ...(profile && { profile }) })
         : await patch<ReviewerSource>(`/reviewer-sources/${(source as ReviewerSource)._id}`, body);
       toast.success(isNew ? 'پیج اضافه شد. دریافت پست‌های قبلی در صف است.' : 'تغییرات ذخیره شد.');
       onSaved(saved, isNew);
@@ -237,18 +304,35 @@ function SourceDialog({
             </DialogDescription>
           </DialogHeader>
           {isNew ? (
-            <Field label="شناسهٔ اینستاگرام" htmlFor="src-handle">
-              <Input
-                id="src-handle"
-                dir="ltr"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="reviewer.page"
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-                onBlur={() => setHandle(normalizeHandle(handle))}
-              />
-            </Field>
+            <>
+              <Field label="شناسهٔ اینستاگرام" htmlFor="src-handle">
+                <div className="flex gap-2">
+                  <Input
+                    id="src-handle"
+                    dir="ltr"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder="reviewer.page"
+                    value={handle}
+                    onChange={(e) => {
+                      setHandle(e.target.value);
+                      setDraft(null);
+                      setDraftError(null);
+                    }}
+                    onBlur={() => setHandle(normalizeHandle(handle))}
+                  />
+                  <Button type="button" variant="outline" disabled={profileJob.running || !normalizeHandle(handle)} onClick={checkPage}>
+                    {profileJob.running ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+                    بررسی پیج
+                  </Button>
+                </div>
+              </Field>
+              <div aria-live="polite" className="flex flex-col gap-3">
+                {profileJob.running && <p className="text-sm text-ink-3">در حال خواندن پروفایل از اینستاگرام…</p>}
+                {draftError && <Alert tone="error">{draftError} می‌توانید باز هم ذخیره کنید؛ تصمیم با شماست.</Alert>}
+                {draft && <DraftCard draft={draft} problem={problem} />}
+              </div>
+            </>
           ) : (
             source && (
               <p className="text-sm text-ink-2">
@@ -292,6 +376,15 @@ function SourceDialog({
             در بررسی روزانه باشد
             <Switch checked={follow} onCheckedChange={setFollow} />
           </label>
+          <div className="flex flex-col gap-1.5 rounded-xl border border-line px-3 py-2.5">
+            <label className="flex items-center justify-between gap-3 text-sm text-ink-2">
+              پیج مورد اعتماد
+              <Switch checked={trusted} onCheckedChange={setTrusted} aria-describedby="src-trusted-hint" />
+            </label>
+            <p id="src-trusted-hint" className="text-xs leading-5 text-ink-3">
+              نقدهای واضح این پیج بدون تأیید شما منتشر می‌شوند و بقیه برای بررسی نزد یک نفر می‌روند.
+            </p>
+          </div>
           <DialogFooter className="gap-2 sm:justify-start">
             <Button type="submit" disabled={pending || !name.trim() || !limitValid || (isNew && !normalizeHandle(handle))}>
               {pending && <Loader2 className="animate-spin" aria-hidden="true" />}
@@ -304,5 +397,33 @@ function SourceDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DraftCard({ draft, problem }: { draft: ProfileDraft; problem: string | null }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-line bg-subtle p-3">
+      <div className="flex items-start gap-3">
+        {draft.image ? (
+          <img src={draft.image.url} alt={`تصویر ${draft.displayName ?? draft.handle}`} className="size-14 shrink-0 rounded-full border border-line object-cover" />
+        ) : (
+          <span aria-hidden="true" className="size-14 shrink-0 rounded-full border border-line bg-surface" />
+        )}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-ink">{draft.displayName || draft.handle}</span>
+            <Badge variant={problem ? 'caution' : 'success'}>{problem ? 'نیاز به بررسی' : 'مناسب است'}</Badge>
+          </div>
+          <Handle handle={draft.handle} link={false} className="text-xs" />
+          <p className="text-xs text-ink-3">
+            {draft.postCount != null && <>{num(draft.postCount)} پست</>}
+            {draft.postCount != null && draft.followerCount != null && ' · '}
+            {draft.followerCount != null && <>{num(draft.followerCount)} دنبال‌کننده</>}
+          </p>
+        </div>
+      </div>
+      {draft.biography && <p className="line-clamp-3 text-sm leading-6 text-ink-2">{draft.biography}</p>}
+      {problem && <Alert tone="note">{problem} می‌توانید باز هم ذخیره کنید؛ تصمیم با شماست.</Alert>}
+    </div>
   );
 }

@@ -56,6 +56,19 @@ export type ReviewerSource = {
   lastSeenShortcode?: string;
   lastSeenPostAt?: string;
   permission: ReviewerPermission;
+  trusted: boolean;
+  profile?: ReviewerProfile;
+};
+
+/** The page's Instagram profile as stored when it was added (PRD §6.1). */
+export type ReviewerProfile = {
+  sha256?: string;
+  displayName?: string;
+  biography?: string;
+  postCount?: number;
+  followerCount?: number;
+  isPrivate?: boolean;
+  fetchedAt?: string;
 };
 
 export type Review = {
@@ -112,6 +125,10 @@ export type ProfileDraft = {
   image: (StoredImage & { url: string }) | null;
   imageError?: string;
   contact: { email: string | null; website: string | null; phone: string | null };
+  biography?: string;
+  postCount?: number;
+  followerCount?: number;
+  isPrivate: boolean;
   fetchedAt: string;
 };
 
