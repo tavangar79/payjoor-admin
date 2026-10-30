@@ -19,12 +19,13 @@ export function profileJobError(reason: string) {
 export function useProfileJob() {
   const [running, setRunning] = useState(false);
   const cancelled = useRef(false);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // StrictMode runs this cleanup once on mount in dev, so reset here.
+    cancelled.current = false;
+    return () => {
       cancelled.current = true;
-    },
-    [],
-  );
+    };
+  }, []);
 
   /** Polls until the job finishes. Resolves with the draft; rejects with a Persian message. */
   const wait = useCallback(async (jobId: string): Promise<ProfileDraft> => {

@@ -10320,7 +10320,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "admin/src/pages/Jobs.tsx",
-      "source_location": "L187",
+      "source_location": "L185",
       "weight": 1.0,
       "source": "src_pages_jobs_quotacard",
       "target": "src_lib_labels_num"
@@ -10419,7 +10419,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "admin/src/pages/Jobs.tsx",
-      "source_location": "L197",
+      "source_location": "L195",
       "weight": 1.0,
       "source": "src_pages_jobs_quotacard",
       "target": "src_lib_labels_fmtdatetime"
@@ -10734,7 +10734,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "admin/src/lib/profileJob.ts",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0,
       "source": "src_lib_profilejob_useprofilejob",
       "target": "src_lib_profilejob_profilejoberror",
@@ -11821,17 +11821,6 @@
       "target": "src_lib_utils_cn"
     },
     {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "admin/src/pages/Jobs.tsx",
-      "source_location": "L212",
-      "weight": 1.0,
-      "source": "src_pages_jobs_quotacard",
-      "target": "src_lib_utils_cn"
-    },
-    {
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -12455,5 +12444,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "21caf8afbd9806471ae0a106133d658477162223"
+  "built_at_commit": "2d948f87efe2e03f45cc51940b5c5c17a3a5f776"
 }

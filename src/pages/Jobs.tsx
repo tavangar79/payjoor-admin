@@ -175,8 +175,6 @@ function QuotaCard({ quota, loading, error, onRetry }: { quota?: Quota; loading:
 
   const { requestUsed: used, requestLimit: max, requestLeft: left } = quota;
   const pct = max > 0 ? Math.min(100, (used / max) * 100) : 100;
-  const low = left <= Math.max(1, max * 0.2);
-  const barTone = left <= 0 ? 'bg-danger-solid' : low ? 'bg-warn-solid' : 'bg-brand-solid';
 
   return (
     <Panel className="flex flex-col gap-4 p-5">
@@ -209,7 +207,7 @@ function QuotaCard({ quota, loading, error, onRetry }: { quota?: Quota; loading:
         aria-valuenow={used}
         aria-valuetext={`${num(used)} از ${num(max)}`}
       >
-        <div className={cn('h-full rounded-full transition-[width]', barTone)} style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-brand-solid transition-[width]" style={{ width: `${pct}%` }} />
       </div>
       {left <= 0 && (
         <Alert tone="note">درخواست‌های این دوره تمام شده است: بررسی روزانه، پست‌های قبلی و خواندن پروفایل تا تمدید اشتراک کار نمی‌کنند.</Alert>

@@ -1,16 +1,16 @@
-# Graph Report - admin  (2026-10-29)
+# Graph Report - admin  (2026-10-30)
 
 ## Corpus Check
-- 41 files · ~15,362 words
+- 41 files · ~15,373 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 303 nodes · 880 edges · 14 communities (13 shown, 1 thin omitted)
+- 303 nodes · 879 edges · 14 communities (13 shown, 1 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `21caf8af`
+- Built from commit: `2d948f87`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,7 +30,7 @@
 - [[_COMMUNITY_badge.tsx|badge.tsx]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 93 edges
+1. `cn()` - 92 edges
 2. `get()` - 21 edges
 3. `useToast()` - 18 edges
 4. `useAsync()` - 17 edges
@@ -115,7 +115,7 @@ Nodes (13): dateOnly, dateTime, DIRECTION_LABELS, DIRECTION_TONE, ERROR_LABELS, 
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `cn()` connect `devDependencies` to `App.tsx`, `dependencies`, `ShopEdit.tsx`, `api.ts`, `utils.ts`, `Jobs.tsx`, `badge.tsx`?**
-  _High betweenness centrality (0.197) - this node is a cross-community bridge._
+  _High betweenness centrality (0.196) - this node is a cross-community bridge._
 - **Why does `get()` connect `App.tsx` to `dependencies`, `ShopEdit.tsx`, `api.ts`, `utils.ts`, `Jobs.tsx`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Why does `Button()` connect `devDependencies` to `App.tsx`, `dependencies`, `ShopEdit.tsx`, `api.ts`, `utils.ts`, `Jobs.tsx`?**
