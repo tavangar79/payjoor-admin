@@ -250,9 +250,11 @@ function SourceDialog({
               />
             </Field>
           ) : (
-            <p className="text-sm text-ink-2">
-              پیج: <Handle handle={(source as ReviewerSource).handle} />
-            </p>
+            source && (
+              <p className="text-sm text-ink-2">
+                پیج: <Handle handle={source.handle} />
+              </p>
+            )
           )}
           <Field label="نام نمایشی" htmlFor="src-name">
             <Input id="src-name" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} />
