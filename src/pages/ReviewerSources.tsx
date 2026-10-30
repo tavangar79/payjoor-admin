@@ -1,5 +1,5 @@
 // Add/edit sources, follow toggle, backfill limit, run backfill now (PRD §6.1, §9.2.5).
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { History, Loader2, Pencil, Plus, Search, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, EmptyState, ErrorState, Field, Handle, LoadingRows, PageHeader, Panel } from '@/components/common';
 import { normalizeHandle } from '@/components/TagInput';
 import { useToast } from '@/components/toast';
-import { useProfileJob } from '@/lib/profileJob';
+import { profileJobError, useProfileJob } from '@/lib/profileJob';
 import { get, patch, post } from '@/lib/api';
 import { PERMISSION_LABELS, errorMessage, fmtAgo, fmtDateTime, num } from '@/lib/labels';
 import { REVIEWER_PERMISSIONS, type ProfileDraft, type ReviewerPermission, type ReviewerSource } from '@/lib/types';
@@ -212,7 +212,13 @@ function SourceDialog({
   const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [notFoundFor, setNotFoundFor] = useState<string | null>(null);
   const profileJob = useProfileJob();
+  // The latest form state, read when a check finishes so a stale result can be dropped.
+  const latest = useRef({ key, handle: '', name: '' });
+  useEffect(() => {
+    latest.current = { key, handle: normalizeHandle(handle), name };
+  });
 
   if (key && openFor !== key) {
     setOpenFor(key);
@@ -225,6 +231,7 @@ function SourceDialog({
     setTrusted(s?.trusted ?? false);
     setDraft(null);
     setDraftError(null);
+    setNotFoundFor(null);
   }
 
   // One Instagram request per press; never on typing.
@@ -236,20 +243,38 @@ function SourceDialog({
     }
     setDraft(null);
     setDraftError(null);
+    setNotFoundFor(null);
+    const startedKey = latest.current.key;
+    // The result belongs to this form only if the dialog and the handle are still the ones we asked about.
+    const current = () => latest.current.key === startedKey && latest.current.handle === h;
     profileJob.setRunning(true);
     try {
       const { jobId } = await post<{ jobId: string }>('/shops/profile-preview', { handle: h });
       const result = await profileJob.wait(jobId);
+      if (!current() || result.handle !== h) return;
       setDraft(result);
-      if (!name.trim() && result.displayName) setName(result.displayName);
+      if (!latest.current.name.trim() && result.displayName) setName(result.displayName);
     } catch (err) {
       if (err instanceof Error && err.message === 'cancelled') return;
       profileJob.setRunning(false);
-      setDraftError(errorMessage(err));
+      if (!current()) return;
+      if (err instanceof Error && err.message === profileJobError('profile_not_found')) setNotFoundFor(h);
+      else setDraftError(errorMessage(err));
     }
   }
 
-  const problem = draft ? (draft.isPrivate ? 'پیج خصوصی است.' : !draft.postCount ? 'پیج هنوز پستی ندارد.' : null) : null;
+  // Only the draft and not-found result for the handle now in the field count.
+  const shownDraft = draft && draft.handle === normalizeHandle(handle) ? draft : null;
+  const notFound = notFoundFor !== null && notFoundFor === normalizeHandle(handle);
+  const reason = notFound
+    ? 'پیجی با این شناسه پیدا نشد.'
+    : !shownDraft
+      ? null
+      : shownDraft.isPrivate
+        ? 'پیج خصوصی است.'
+        : shownDraft.postCount === 0
+          ? 'پیج هنوز پستی ندارد.'
+          : null;
 
   const limitNumber = Number(limit);
   const limitValid = Number.isInteger(limitNumber) && limitNumber >= 0 && limitNumber <= 500;
@@ -261,15 +286,15 @@ function SourceDialog({
     try {
       const body = { name: name.trim(), follow, backfillLimit: limitNumber, permission, trusted };
       const profile =
-        draft?.image && draft.postCount != null && draft.followerCount != null
+        shownDraft?.image && shownDraft.postCount != null && shownDraft.followerCount != null
           ? {
-              sha256: draft.image.sha256,
-              displayName: draft.displayName,
-              biography: draft.biography,
-              postCount: draft.postCount,
-              followerCount: draft.followerCount,
-              isPrivate: draft.isPrivate,
-              fetchedAt: draft.fetchedAt,
+              sha256: shownDraft.image.sha256,
+              displayName: shownDraft.displayName,
+              biography: shownDraft.biography,
+              postCount: shownDraft.postCount,
+              followerCount: shownDraft.followerCount,
+              isPrivate: shownDraft.isPrivate,
+              fetchedAt: shownDraft.fetchedAt,
             }
           : undefined;
       const saved = isNew
@@ -314,10 +339,12 @@ function SourceDialog({
                     spellCheck={false}
                     placeholder="reviewer.page"
                     value={handle}
+                    disabled={profileJob.running}
                     onChange={(e) => {
                       setHandle(e.target.value);
                       setDraft(null);
                       setDraftError(null);
+                      setNotFoundFor(null);
                     }}
                     onBlur={() => setHandle(normalizeHandle(handle))}
                   />
@@ -329,8 +356,8 @@ function SourceDialog({
               </Field>
               <div aria-live="polite" className="flex flex-col gap-3">
                 {profileJob.running && <p className="text-sm text-ink-3">در حال خواندن پروفایل از اینستاگرام…</p>}
-                {draftError && <Alert tone="error">{draftError} می‌توانید باز هم ذخیره کنید؛ تصمیم با شماست.</Alert>}
-                {draft && <DraftCard draft={draft} problem={problem} />}
+                {draftError && <Alert tone="error">{draftError}</Alert>}
+                {(shownDraft || notFound) && <CheckResult draft={shownDraft} reason={reason} />}
               </div>
             </>
           ) : (
@@ -400,30 +427,41 @@ function SourceDialog({
   );
 }
 
-function DraftCard({ draft, problem }: { draft: ProfileDraft; problem: string | null }) {
+const SAVE_ANYWAY = 'می‌توانید باز هم ذخیره کنید؛ تصمیم با شماست.';
+
+/** Result of the page check: details when we have them, and the reason when the page is not OK. */
+function CheckResult({ draft, reason }: { draft: ProfileDraft | null; reason: string | null }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line bg-subtle p-3">
       <div className="flex items-start gap-3">
-        {draft.image ? (
-          <img src={draft.image.url} alt={`تصویر ${draft.displayName ?? draft.handle}`} className="size-14 shrink-0 rounded-full border border-line object-cover" />
-        ) : (
-          <span aria-hidden="true" className="size-14 shrink-0 rounded-full border border-line bg-surface" />
-        )}
+        {draft &&
+          (draft.image ? (
+            <img src={draft.image.url} alt={`تصویر ${draft.displayName ?? draft.handle}`} className="size-14 shrink-0 rounded-full border border-line object-cover" />
+          ) : (
+            <span aria-hidden="true" className="size-14 shrink-0 rounded-full border border-line bg-surface" />
+          ))}
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-ink">{draft.displayName || draft.handle}</span>
-            <Badge variant={problem ? 'caution' : 'success'}>{problem ? 'نیاز به بررسی' : 'مناسب است'}</Badge>
+            {draft && <span className="font-semibold text-ink">{draft.displayName || draft.handle}</span>}
+            <Badge variant={reason ? 'caution' : 'success'}>{reason ? 'نیاز به بررسی' : 'مناسب است'}</Badge>
           </div>
-          <Handle handle={draft.handle} link={false} className="text-xs" />
-          <p className="text-xs text-ink-3">
-            {draft.postCount != null && <>{num(draft.postCount)} پست</>}
-            {draft.postCount != null && draft.followerCount != null && ' · '}
-            {draft.followerCount != null && <>{num(draft.followerCount)} دنبال‌کننده</>}
-          </p>
+          {draft && (
+            <>
+              <Handle handle={draft.handle} link={false} className="text-xs" />
+              <p className="text-xs text-ink-3">
+                {draft.postCount != null && <>{num(draft.postCount)} پست</>}
+                {draft.postCount != null && draft.followerCount != null && ' · '}
+                {draft.followerCount != null && <>{num(draft.followerCount)} دنبال‌کننده</>}
+              </p>
+            </>
+          )}
         </div>
       </div>
-      {draft.biography && <p className="line-clamp-3 text-sm leading-6 text-ink-2">{draft.biography}</p>}
-      {problem && <Alert tone="note">{problem} می‌توانید باز هم ذخیره کنید؛ تصمیم با شماست.</Alert>}
+      {draft?.biography && <p className="line-clamp-3 text-sm leading-6 text-ink-2">{draft.biography}</p>}
+      {draft && !draft.image && (
+        <p className="text-xs text-ink-3">تصویر پیج ذخیره نشد؛ در فهرست بدون تصویر و تعداد پست نمایش داده می‌شود.</p>
+      )}
+      {reason && <Alert tone="note">{reason} {SAVE_ANYWAY}</Alert>}
     </div>
   );
 }
