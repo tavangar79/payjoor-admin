@@ -3,13 +3,15 @@
 // and contact fields stay empty unless the shop's own page shows them.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { ArrowRight, Download, ImageUp, Loader2, RefreshCw, Save, X } from 'lucide-react';
+import { ArrowRight, Download, ImageUp, Loader2, RefreshCw, Save, Store, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, EmptyState, ErrorState, Field, Handle, LoadingRows, PageHeader, Panel } from '@/components/common';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Badge } from '@/components/ui/badge';
 import { TagInput, normalizeHandle } from '@/components/TagInput';
 import { useToast } from '@/components/toast';
 import { ApiError, get, patch, post, uploadImage } from '@/lib/api';
@@ -276,6 +278,20 @@ function ShopForm({ shop, onRefreshed }: { shop?: Shop; onRefreshed: () => void 
     }
   }
 
+  const [notShopOpen, setNotShopOpen] = useState(false);
+
+  async function markNotAShop() {
+    if (!shop) return;
+    try {
+      await post(`/shops/${shop._id}/not-a-shop`);
+    } catch (err) {
+      toast.error(errorMessage(err));
+      throw err;
+    }
+    toast.success('فروشگاه حذف و شناسه‌اش نادیده گرفته شد.');
+    navigate('/shops', { replace: true });
+  }
+
   const busy = saving || uploading || profile.running;
   const title = shop ? shop.displayName : wishlistId ? 'ساخت فروشگاه از فهرست انتظار' : 'فروشگاه تازه';
 
@@ -284,7 +300,27 @@ function ShopForm({ shop, onRefreshed }: { shop?: Shop; onRefreshed: () => void 
       <BackLink />
       <PageHeader
         title={title}
+        actions={
+          shop?.autoCreated && (
+            <>
+              <Badge variant="caution">ساختهٔ خودکار</Badge>
+              <Button type="button" variant="outline" className="text-danger" onClick={() => setNotShopOpen(true)}>
+                <Store aria-hidden="true" />
+                این فروشگاه نیست
+              </Button>
+            </>
+          )
+        }
         description={shop ? <Handle handle={shop.handle} /> : 'اول پروفایل را از اینستاگرام بخوانید، بعد اطلاعات را بررسی و ذخیره کنید.'}
+      />
+
+      <ConfirmDialog
+        open={notShopOpen}
+        onOpenChange={setNotShopOpen}
+        title="این پیج فروشگاه نیست؟"
+        description="فروشگاه ساخته‌شده به‌صورت خودکار حذف می‌شود و این شناسه از این پس نادیده گرفته می‌شود. اگر فروشگاه نقدی داشته باشد، حذف نمی‌شود."
+        confirmLabel="حذف و نادیده گرفتن"
+        onConfirm={markNotAShop}
       />
 
       <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[1fr_20rem]" noValidate>

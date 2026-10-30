@@ -26,6 +26,7 @@ export const OUTCOME_LABELS: Record<Outcome, string> = {
   not_delivered: 'تحویل نشد',
   return_refused: 'مرجوعی پذیرفته نشد',
   other_problem: 'مشکل دیگر',
+  scam_reported: 'گزارش کلاهبرداری',
 };
 
 export const DIRECTION_LABELS: Record<Direction, string> = {
@@ -52,7 +53,33 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
   post_owner_lookup: 'یافتن صاحب پست',
   profile_fetch: 'خواندن پروفایل',
   token_refresh: 'تمدید توکن',
+  ai_classify: 'تحلیل پست با هوش مصنوعی',
+  post_publish: 'انتشار خودکار پست',
 };
+
+// Why a post waits for a person: the publish gate's reasons plus the intake ones. Unknown codes show raw.
+const HOLD_REASON_LABELS: Record<string, string> = {
+  not_review: 'مدل پست را نقد نمی‌داند',
+  no_shop: 'فروشگاهی در پست پیدا نشد',
+  several_shops: 'چند فروشگاه در پست هست',
+  low_confidence: 'اطمینان مدل کم است',
+  no_evidence: 'مدرکی در پست دیده نشد',
+  paid_partnership: 'همکاری پولی (تبلیغاتی)',
+  direction_none: 'جهت نقد مشخص نیست',
+  outcome_none: 'نتیجهٔ نقد مشخص نیست',
+  invalid_handle: 'شناسهٔ فروشگاه معتبر نیست',
+  handle_not_in_post: 'شناسه در کپشن یا تگ‌ها نیست',
+  ignored_handle: 'شناسه در فهرست نادیده‌گرفته‌ها است',
+  scam_contradiction: 'ادعای کلاهبرداری با نتیجهٔ نقد نمی‌خواند',
+  source_not_trusted: 'پیج نقد مورد اعتماد نیست',
+  review_pending: 'نقدی از این پست در انتظار بررسی است',
+  review_rejected: 'نقدی از این پست قبلاً رد شده است',
+  profile_not_found: 'پروفایل فروشگاه پیدا نشد',
+  profile_private: 'پروفایل فروشگاه خصوصی است',
+  no_image: 'تصویر پروفایل فروشگاه نبود',
+  dismissed_handle: 'این شناسه قبلاً کنار گذاشته شده است',
+};
+export const holdReasonLabel = (code: string) => HOLD_REASON_LABELS[code] ?? code;
 
 export const WISHLIST_SOURCE_LABELS = { dm: 'دایرکت', reviewer_post: 'پست نقد' } as const;
 
@@ -89,6 +116,10 @@ const ERROR_LABELS: Record<string, string> = {
   unknown_category: 'یکی از دسته‌بندی‌ها دیگر وجود ندارد.',
   source_exists: 'این پیج نقد قبلاً اضافه شده است.',
   bad_request: 'درخواست نامعتبر بود (شاید فایل بیش از ۲ مگابایت است).',
+  not_needs_person: 'این پست دیگر منتظر بررسی نیست.',
+  not_rerunnable: 'این پست را نمی‌شود دوباره اجرا کرد.',
+  not_auto_created: 'این فروشگاه را سامانه نساخته است.',
+  shop_has_reviews: 'این فروشگاه نقد دارد و حذف نمی‌شود. اول نقدهایش را بررسی کنید.',
   internal_error: 'خطای سرور. کمی بعد دوباره تلاش کنید.',
 };
 

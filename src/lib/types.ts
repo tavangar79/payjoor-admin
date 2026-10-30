@@ -1,7 +1,7 @@
 // Shapes returned by /admin/api/* (PRD §8). ObjectIds and dates arrive as strings.
 export const SHOP_STATUSES = ['serious_warning', 'warning', 'mixed', 'recommended', 'no_known_issues'] as const;
 export type ShopStatus = (typeof SHOP_STATUSES)[number];
-export const OUTCOMES = ['delivered_ok', 'delivered_not_as_described', 'not_delivered', 'return_refused', 'other_problem'] as const;
+export const OUTCOMES = ['delivered_ok', 'delivered_not_as_described', 'not_delivered', 'return_refused', 'other_problem', 'scam_reported'] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 export const DIRECTIONS = ['positive', 'negative', 'mixed'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
@@ -11,7 +11,7 @@ export const WISHLIST_STATUSES = ['open', 'promoted', 'dismissed'] as const;
 export type WishlistStatus = (typeof WISHLIST_STATUSES)[number];
 export const REVIEWER_PERMISSIONS = ['link_only', 'screenshot', 'embed'] as const;
 export type ReviewerPermission = (typeof REVIEWER_PERMISSIONS)[number];
-export const JOB_TYPES = ['daily_check', 'backfill', 'post_owner_lookup', 'profile_fetch', 'token_refresh'] as const;
+export const JOB_TYPES = ['daily_check', 'backfill', 'post_owner_lookup', 'profile_fetch', 'token_refresh', 'ai_classify', 'post_publish'] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
 export type Paged<T> = { items: T[]; total: number; page: number; limit: number };
@@ -34,6 +34,8 @@ export type Shop = {
   profileImage: StoredImage;
   contact?: Contact;
   profileFetchedAt?: string;
+  /** Created by the auto-publish flow; can be undone with "not a shop" (PRD §6.3). */
+  autoCreated?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -88,6 +90,7 @@ export type Review = {
   summary?: string;
   rejectReason?: string;
   publishedAt?: string;
+  autoPublished?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,3 +139,36 @@ export type ProfileJob =
   | { state: 'completed'; result: ProfileDraft }
   | { state: 'failed'; error: string }
   | { state: 'waiting' | 'active' | 'delayed' | 'prioritized' | 'waiting-children' | 'unknown' };
+
+/** Why a post was held for a person: GATE_REASONS (backend/src/services/postGate.ts) plus the intake reasons. */
+export type PostAnalysis = {
+  isReview: boolean;
+  shops: { handle: string; role: 'reviewed_shop' | 'other' }[];
+  direction: Direction | 'none';
+  outcome: Outcome | 'none';
+  summary: string;
+  category: string;
+  scamClaim: boolean;
+  hasEvidence: boolean;
+  confidence: number;
+  model: string;
+};
+
+export type PostCheck = {
+  _id: string;
+  reviewerSourceId?: Pick<ReviewerSource, 'handle' | 'name'> | null;
+  postShortcode: string;
+  postUrl: string;
+  occurredAt: string;
+  caption: string;
+  media?: { displayUrl?: string; videoUrl?: string };
+  paidPartnership: boolean;
+  tagged: string[];
+  status: 'queued' | 'classified' | 'needs_person' | 'published' | 'dismissed';
+  reasons: string[];
+  analysis?: PostAnalysis;
+  lastError?: string;
+  shopIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};

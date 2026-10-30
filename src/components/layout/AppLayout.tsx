@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import {
   BriefcaseBusiness,
   ClipboardCheck,
+  ScanSearch,
   Gauge,
   Layers,
   ListOrdered,
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils';
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/reviews', label: 'نقدهای در انتظار', icon: ClipboardCheck },
+  { to: '/post-checks', label: 'پست‌های نیازمند بررسی', icon: ScanSearch },
   { to: '/wishlist', label: 'فهرست انتظار', icon: ListOrdered },
   { to: '/shops', label: 'فروشگاه‌ها', icon: Store },
   { to: '/categories', label: 'دسته‌بندی‌ها', icon: Layers },

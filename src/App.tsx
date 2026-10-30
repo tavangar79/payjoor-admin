@@ -4,6 +4,7 @@ import { ToastProvider } from '@/components/toast';
 import { AuthProvider, RequireAdmin } from '@/lib/auth';
 import { Login } from '@/pages/Login';
 import { PendingReviews } from '@/pages/PendingReviews';
+import { PostChecks } from '@/pages/PostChecks';
 import { Wishlist } from '@/pages/Wishlist';
 import { Shops } from '@/pages/Shops';
 import { ShopEdit } from '@/pages/ShopEdit';
@@ -21,6 +22,7 @@ export function App() {
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="/reviews" replace />} />
               <Route path="/reviews" element={<PendingReviews />} />
+              <Route path="/post-checks" element={<PostChecks />} />
               <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/shops" element={<Shops />} />
               <Route path="/shops/new" element={<ShopEdit />} />

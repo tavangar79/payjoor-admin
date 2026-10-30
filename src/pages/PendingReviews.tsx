@@ -340,6 +340,7 @@ function ReviewCard({ review, onDone }: { review: Review; onDone: () => void }) 
                   {review.outcome && <Badge variant="secondary">{OUTCOME_LABELS[review.outcome]}</Badge>}
                   {review.direction && <Badge variant={DIRECTION_TONE[review.direction]}>{DIRECTION_LABELS[review.direction]}</Badge>}
                   {review.summary && <span className="text-ink-2">«{review.summary}»</span>}
+                  {review.autoPublished && <Badge variant="caution">انتشار خودکار</Badge>}
                   <span className="text-xs text-ink-3">منتشرشده {fmtAgo(review.publishedAt)}</span>
                   <Button variant="outline" size="sm" className="ms-auto text-danger" onClick={() => setRejectOpen(true)}>
                     خارج کردن از انتشار
