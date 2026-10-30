@@ -190,6 +190,8 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
     new Set([...(a?.shops.filter((s) => s.role === 'reviewed_shop').map((s) => s.handle) ?? []), ...check.tagged]),
   );
   const busy = publishing || rerunning;
+  // The backend only reruns jobs that gave up (the failed tab); a held post answers 409 not_rerunnable.
+  const rerunnable = (check.status === 'queued' || check.status === 'classified') && Boolean(check.lastError);
 
   async function publish() {
     if (!outcome || !direction || !shops.length) {
@@ -296,10 +298,12 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
                 <span className="font-medium text-ink-2">پردازش این پست متوقف شد</span>
                 <Ltr className="max-w-full truncate text-xs text-ink-3">{check.lastError}</Ltr>
               </div>
-              <Button variant="outline" size="sm" onClick={rerun} disabled={busy}>
-                {rerunning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
-                اجرای دوباره
-              </Button>
+              {rerunnable && (
+                <Button variant="outline" size="sm" onClick={rerun} disabled={busy}>
+                  {rerunning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
+                  اجرای دوباره
+                </Button>
+              )}
             </div>
           )}
 
