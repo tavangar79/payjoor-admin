@@ -83,7 +83,7 @@ export function PostChecks() {
       ) : (
         <div className={cn('flex flex-col gap-4', list.loading && 'opacity-60')} aria-busy={list.loading}>
           {list.data.items.map((check) => (
-            <CheckCard key={check._id} check={check} onDone={() => removeItem(check._id)} />
+            <CheckCard key={check._id} check={check} failed={tab === 'failed'} onDone={() => removeItem(check._id)} />
           ))}
           {list.data.total > LIMIT && (
             <Panel>
@@ -171,12 +171,13 @@ function Suggestion({ check }: { check: PostCheck }) {
   );
 }
 
-function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) {
+function CheckCard({ check, failed, onDone }: { check: PostCheck; failed: boolean; onDone: () => void }) {
   const toast = useToast();
   const a = check.analysis;
   const [outcome, setOutcome] = useState<Outcome | undefined>(a && a.outcome !== 'none' ? a.outcome : undefined);
   const [direction, setDirection] = useState<Direction | undefined>(a && a.direction !== 'none' ? a.direction : undefined);
   const [summary, setSummary] = useState(a?.summary ?? '');
+  const [category, setCategory] = useState(a?.category ?? '');
   const [scamClaim, setScamClaim] = useState(a?.scamClaim ?? false);
   const [shops, setShops] = useState<ShopPick[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -190,8 +191,6 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
     new Set([...(a?.shops.filter((s) => s.role === 'reviewed_shop').map((s) => s.handle) ?? []), ...check.tagged]),
   );
   const busy = publishing || rerunning;
-  // The backend only reruns jobs that gave up (the failed tab); a held post answers 409 not_rerunnable.
-  const rerunnable = (check.status === 'queued' || check.status === 'classified') && Boolean(check.lastError);
 
   async function publish() {
     if (!outcome || !direction || !shops.length) {
@@ -205,6 +204,7 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
         outcome,
         direction,
         summary: summary.trim() || undefined,
+        category: category.trim() || undefined,
         scamClaim,
       });
       toast.success('نقد منتشر شد.');
@@ -292,18 +292,21 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
 
           <Suggestion check={check} />
 
-          {check.lastError && (
+          {/* Only failed rows can rerun; a lost job leaves no lastError, and a held post answers 409 not_rerunnable. */}
+          {failed && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-subtle px-4 py-3 text-sm">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-medium text-ink-2">پردازش این پست متوقف شد</span>
-                <Ltr className="max-w-full truncate text-xs text-ink-3">{check.lastError}</Ltr>
+                {check.lastError ? (
+                  <Ltr className="max-w-full truncate text-xs text-ink-3">{check.lastError}</Ltr>
+                ) : (
+                  <span className="text-xs text-ink-3">این پست بیش از ۶ ساعت بدون تغییر مانده است.</span>
+                )}
               </div>
-              {rerunnable && (
-                <Button variant="outline" size="sm" onClick={rerun} disabled={busy}>
-                  {rerunning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
-                  اجرای دوباره
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={rerun} disabled={busy}>
+                {rerunning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
+                اجرای دوباره
+              </Button>
             </div>
           )}
 
@@ -350,6 +353,13 @@ function CheckCard({ check, onDone }: { check: PostCheck; onDone: () => void }) 
             </div>
             <Field label="خلاصهٔ یک‌خطی (اختیاری)" htmlFor={`${idBase}-summary`} hint="در پاسخ دایرکت نشان داده می‌شود. حداکثر ۲۰۰ نویسه.">
               <Input id={`${idBase}-summary`} maxLength={200} value={summary} onChange={(e) => setSummary(e.target.value)} />
+            </Field>
+            <Field
+              label="دسته‌بندی (اختیاری)"
+              htmlFor={`${idBase}-category`}
+              hint="فقط به فروشگاهی که دسته‌بندی ندارد اضافه می‌شود. اگر این نام وجود نداشته باشد، ساخته می‌شود."
+            >
+              <Input id={`${idBase}-category`} maxLength={80} value={category} onChange={(e) => setCategory(e.target.value)} />
             </Field>
 
             <div className="flex flex-col gap-1.5">

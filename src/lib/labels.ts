@@ -71,6 +71,9 @@ const HOLD_REASON_LABELS: Record<string, string> = {
   handle_not_in_post: 'شناسه در کپشن یا تگ‌ها نیست',
   ignored_handle: 'شناسه در فهرست نادیده‌گرفته‌ها است',
   scam_contradiction: 'ادعای کلاهبرداری با نتیجهٔ نقد نمی‌خواند',
+  model_contradiction: 'جهت و نتیجهٔ نقد با هم نمی‌خوانند',
+  bad_summary: 'خلاصهٔ مدل خالی یا بیش از حد بلند است',
+  not_a_shop: 'پیج قبلی فروشگاه نبود؛ فروشگاه درست را انتخاب کنید',
   source_not_trusted: 'پیج نقد مورد اعتماد نیست',
   review_pending: 'نقدی از این پست در انتظار بررسی است',
   review_rejected: 'نقدی از این پست قبلاً رد شده است',
@@ -94,6 +97,10 @@ export const COUNT_LABELS: Record<string, string> = {
   sources: 'پیج',
   sourceErrors: 'پیج ناموفق',
   postsNew: 'پست جدید',
+  postsQueued: 'در صف تحلیل',
+  classified: 'تحلیل‌شده',
+  published: 'منتشرشده',
+  held: 'نگه‌داشته‌شده',
   found: 'پیدا شد',
 };
 
@@ -119,7 +126,7 @@ const ERROR_LABELS: Record<string, string> = {
   not_needs_person: 'این پست دیگر منتظر بررسی نیست.',
   not_rerunnable: 'این پست را نمی‌شود دوباره اجرا کرد.',
   not_auto_created: 'این فروشگاه را سامانه نساخته است.',
-  shop_has_reviews: 'این فروشگاه نقد دارد و حذف نمی‌شود. اول نقدهایش را بررسی کنید.',
+  shop_has_reviews: 'این فروشگاه نقدی با تأیید شما دارد و حذف نمی‌شود. اول نقدهایش را بررسی کنید.',
   internal_error: 'خطای سرور. کمی بعد دوباره تلاش کنید.',
 };
 
