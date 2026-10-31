@@ -1,0 +1,17 @@
+# Standalone admin image for Hamravesh Darkube (PRD §9, §11). Darkube builds this repo on its own, without the
+# monorepo root that ./Dockerfile needs. Build context: this repo's root.
+# Set BACKEND_URL to the backend's in-cluster address. Leave Darkube's command empty: the nginx entrypoint fills it in.
+# package-lock.json here is separate from the root one: regenerate it when package.json changes.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:1.27-alpine
+ENV BACKEND_URL=http://backend:3000
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist /usr/share/nginx/html/admin
+EXPOSE 8080
